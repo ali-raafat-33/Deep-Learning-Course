@@ -1,147 +1,147 @@
-# شرح الشبكات العصبية الالتفافية (CNN) — دليل عملي للطلاب
+# Understanding Convolutional Neural Networks (CNNs) — A Practical Student Guide
 
-## 1. العنوان والهدف
+## 1. Title and Purpose
 
-**الهدف من هذا الدليل:** تبسيط مفهوم الشبكات العصبية الالتفافية (Convolutional Neural Networks - CNN) للطلاب الجامعيين، بدءًا من فهم لماذا نحتاج CNNs أصلًا، مرورًا بشرح كل مكوّن رياضيًا وبصريًا (Convolution, Pooling, Stride, Padding)، وانتهاءً بتطبيق عملي كامل موثّق سطرًا بسطر لتصنيف صور (قطط مقابل كلاب) باستخدام PyTorch.
+**Goal of this guide:** to give university students a clear, structured understanding of Convolutional Neural Networks (CNNs) — starting from *why* we need CNNs at all, moving through every core component (Convolution, Pooling, Stride, Padding) both mathematically and visually, and ending with a fully documented, line-by-line practical example that trains a real image classifier (cats vs. dogs) in PyTorch.
 
-بعد قراءة هذا الدليل ستكون قادرًا على:
-- شرح الفرق بين الشبكات التقليدية (Fully Connected) وCNNs ولماذا الأخيرة أنسب للصور.
-- فهم كيف يعمل الـ Kernel/Filter، وما هو الـ Feature Map.
-- فهم تأثير الـ Stride والـ Padding على حجم الخرج.
-- فهم أنواع الـ Pooling (Max / Average) والغرض منها.
-- قراءة وفهم كود PyTorch كامل لبناء وتدريب واختبار CNN حقيقي.
-
----
-
-## 2. المتطلبات الأساسية (Prerequisites)
-
-قبل البدء، يُفضّل أن يكون لديك:
-
-- **برمجة Python** أساسيات (المتغيرات، الحلقات، الدوال، الكائنات/Classes).
-- **NumPy** أساسيات التعامل مع المصفوفات (arrays)، الأبعاد (shapes)، والعمليات العنصرية.
-- **مفاهيم أساسية في الشبكات العصبية**: ما هو الـ Neuron، الـ Weights، الـ Activation Function، الـ Loss Function، وخوارزمية Backpropagation (لا يلزم إتقانها، لكن معرفة عامة تكفي).
-- **PyTorch** (المستخدمة في المثال العملي هنا) أو TensorFlow — معرفة أساسية بأن هذه المكتبات تُستخدم لبناء الشبكات العصبية وتدريبها تلقائيًا (Automatic Differentiation).
-- بيئة تشغيل تحتوي على Python 3.9+ ويفضّل GPU (اختياري، يُسرّع التدريب لكنه غير إلزامي).
+By the end of this guide you will be able to:
+- Explain the difference between traditional (Fully Connected) networks and CNNs, and why CNNs are better suited to images.
+- Understand how a Kernel/Filter works and what a Feature Map represents.
+- Understand how Stride and Padding affect the output size.
+- Understand the types of Pooling (Max / Average) and why we use them.
+- Read and understand a complete, real PyTorch training pipeline for building, training, and evaluating a CNN.
 
 ---
 
-## 3. نظرة عامة على المفهوم (Conceptual Overview)
+## 2. Prerequisites
 
-### قبل CNNs: الاستخراج اليدوي للميزات
+Before starting, you should ideally have:
 
-في الماضي، كان لا بد من خبراء بشريين لتصميم قواعد يدوية ("Features") لوصف الحواف والزوايا وأنماط الألوان في الصورة، ثم تُغذّى هذه الميزات لشبكة تعلّم آلي تقليدية. هذه الطريقة بطيئة، محدودة، ولا تتوسّع جيدًا مع البيانات الكبيرة والمعقدة.
+- **Python programming** basics (variables, loops, functions, classes).
+- **NumPy** basics — arrays, shapes, and element-wise operations.
+- **Basic neural network concepts**: what a neuron, weights, activation function, loss function, and backpropagation are (a general understanding is enough — mastery is not required).
+- **PyTorch** (used in the practical example below) or TensorFlow — basic awareness that these libraries build and train neural networks with automatic differentiation.
+- A Python 3.9+ environment. A GPU is optional but speeds up training significantly.
 
-### مع CNNs: تعلّم الميزات تلقائيًا
+---
 
-بدلًا من أن يصمم الإنسان الفلاتر يدويًا، تتعلّم CNN **فلاترها الخاصة مباشرة من البيانات أثناء التدريب**. هذا يجعلها تكتشف تلقائيًا أفضل الأنماط للبحث عنها — وهو أمر يصعب تحقيقه يدويًا على نطاق واسع.
+## 3. Conceptual Overview
 
-### لماذا CNNs تحديدًا للصور؟
+### Before CNNs: Manual Feature Engineering
 
-الصور لها **بنية مكانية (Spatial Structure)**: البكسلات المتجاورة مرتبطة ببعضها (حافة، لون، نسيج...). الشبكة التقليدية (Fully Connected) تُسطّح الصورة إلى قائمة طويلة من الأرقام وتفقد هذه البنية، بينما CNN تحافظ على العلاقات المكانية لأنها تُمرّر فلترًا صغيرًا فوق مناطق محلية من الصورة، بدلًا من ربط كل بكسل بكل عصبون.
+In the past, human experts had to hand-design rules and formulas ("features") to describe edges, corners, and color patterns in an image, which were then fed into a traditional machine learning model. This approach is slow, limited, and doesn't scale well with large, complex datasets.
 
-**فائدة إضافية مهمة:** الفلتر نفسه يُستخدم (يُشارَك) عبر الصورة كاملة، مما يقلل بشدة عدد المعاملات (Parameters) مقارنة بشبكة Fully Connected، ويجعل الشبكة قادرة على اكتشاف النمط بغض النظر عن مكانه في الصورة.
+### With CNNs: Learning Features Automatically
 
-### المكوّنات الأساسية لـ CNN
+Instead of humans hand-crafting filters, a CNN **learns its own filters directly from the data during training**. This lets it automatically discover the best patterns to detect — something that's extremely hard to achieve manually at scale.
 
-| المكوّن | الوظيفة |
+### Why CNNs Specifically for Images?
+
+Images have **spatial structure**: nearby pixels are related to each other (an edge, a color region, a texture...). A traditional Fully Connected network flattens the image into a long list of numbers and loses that structure, while a CNN preserves spatial relationships by sliding a small filter over local regions of the image, instead of connecting every single pixel to every neuron.
+
+**Another key benefit:** the same filter is shared (reused) across the entire image, which drastically reduces the number of parameters compared to a Fully Connected network, and lets the network detect a pattern regardless of where it appears in the image.
+
+### Core Components of a CNN
+
+| Component | Function |
 |---|---|
-| **طبقة الالتفاف (Convolution Layer)** | تستخرج ميزات محلية (حواف، زوايا، أنسجة) عبر فلاتر قابلة للتعلّم |
-| **دالة التفعيل (Activation — عادة ReLU)** | تُدخل اللاخطية (Non-linearity) لتمكين الشبكة من تعلّم أنماط معقدة |
-| **طبقة التجميع (Pooling)** | تقلّل أبعاد الخريطة مع الحفاظ على أهم المعلومات، وتقلل التكلفة الحسابية |
-| **الطبقة المُسطّحة (Flatten)** | تحوّل خرج الطبقات الالتفافية (3D) إلى متجه 1D يصلح لطبقة Fully Connected |
-| **الطبقة المكتملة الاتصال (Fully Connected)** | تُجمّع الميزات المستخرجة وتنتج القرار النهائي (تصنيف) |
-| **دالة الخسارة (Loss Function)** | تقيس الفرق بين تنبؤ الشبكة والقيمة الصحيحة، وتوجّه عملية التدريب |
+| **Convolution Layer** | Extracts local features (edges, corners, textures) using learnable filters |
+| **Activation Function (usually ReLU)** | Introduces non-linearity so the network can learn complex patterns |
+| **Pooling Layer** | Shrinks the feature map while keeping the most important information, reducing computation |
+| **Flatten Layer** | Converts the 3D output of the convolutional layers into a 1D vector for the Fully Connected layer |
+| **Fully Connected Layer** | Combines the extracted features and produces the final decision (classification) |
+| **Loss Function** | Measures how far the network's prediction is from the true label, and drives training |
 
-**تمثيل الصورة داخليًا:** الصورة الملوّنة تُمثَّل كـ **Tensor** ثلاثي الأبعاد بشكل `الارتفاع × العرض × القنوات (Height × Width × Channels)`. الصورة الرمادية لها قناة واحدة (شدة السطوع)، بينما الصورة الملوّنة RGB لها 3 قنوات (أحمر، أخضر، أزرق) تتجمّع لتكوّن كل لون نراه.
-
----
-
-## 4. الهيكلة المعمارية (Architecture Blocks)
-
-فيما يلي وصف نصي تخطيطي لأشهر معماريات CNN التاريخية، ودور كل جزء فيها:
-
-### LeNet-5 (أبسط بنية كلاسيكية)
-
-```
-[صورة الإدخال] → [Conv + Activation] → [Pooling] → [Conv + Activation] → [Pooling]
-              → [Flatten] → [Fully Connected] → [Fully Connected] → [خرج التصنيف]
-```
-- طبقتان التفافيتان فقط، كل منهما تتبعها طبقة Pooling لتقليل الأبعاد تدريجيًا.
-- في النهاية، طبقات Fully Connected صغيرة تُنتج القرار النهائي.
-- صُمّمت أصلًا للتعرف على الأرقام المكتوبة بخط اليد (Handwritten Digits).
-
-### AlexNet (نقطة تحوّل في 2012)
-
-```
-[صورة الإدخال] → [Conv كبيرة + ReLU] → [Pooling] → [Conv + ReLU] → [Pooling]
-              → [Conv + ReLU] × 3 → [Pooling] → [Flatten]
-              → [FC + Dropout] × 2 → [خرج التصنيف]
-```
-- أعمق بكثير من LeNet (5 طبقات التفاف).
-- استخدمت ReLU بدل دوال تفعيل أبطأ، وDropout لمنع الحفظ الزائد (Overfitting).
-- أول من أثبت أن الشبكات العميقة يمكن تدريبها عمليًا على بيانات ضخمة (ImageNet) باستخدام GPU.
-
-### VGG (البساطة والعمق المنتظم)
-
-```
-[صورة الإدخال] → [Conv 3×3 + ReLU] ×2 → [Pooling]
-              → [Conv 3×3 + ReLU] ×2 → [Pooling]
-              → [Conv 3×3 + ReLU] ×3 → [Pooling]  (يتكرر النمط لعدة كتل)
-              → [Flatten] → [FC] ×3 → [خرج التصنيف]
-```
-- تعتمد كليًا على فلاتر صغيرة 3×3 مكررة، بدلًا من فلاتر كبيرة متنوعة الأحجام.
-- العمق الكبير (16 أو 19 طبقة) هو ما يمنحها قوة تمثيلية عالية، مقابل تكلفة حسابية أكبر.
-
-> **ملاحظة:** المثال العملي في هذا الدليل (القسم 7) يستخدم بنية أبسط من هذه الثلاث (3 كتل Conv+ReLU+Pooling فقط)، وهي كافية تمامًا لمسائل تصنيف ثنائي بسيطة مثل "قطة أم كلب"، وتشرح نفس المبادئ دون التعقيد الحسابي للمعماريات الكبيرة.
+**How an image is represented internally:** an image is represented as a 3D **Tensor** shaped `Height × Width × Channels`. A grayscale image has 1 channel (brightness), while a color RGB image has 3 channels (Red, Green, Blue) that combine to form every color we see.
 
 ---
 
-## 5. شروحات توضيحية (Illustrated Explanations)
+## 4. Architecture Blocks
 
-> الأشكال التالية موصوفة نصيًا (بدون رسم فعلي) بحيث يمكنك رسمها يدويًا أو تخيّلها بوضوح أثناء القراءة.
+Below is a text-based structural description of the most well-known classic CNN architectures, and the role each part plays:
 
-**الشكل 1 — الفلتر (Kernel) والالتفاف (Convolution)**
-*التسمية التوضيحية: "فلتر 3×3 ينزلق فوق صورة الإدخال، يضرب قيمه في البكسلات الواقعة تحته، ثم يجمع النتائج في خلية واحدة بخريطة الخرج."*
-تخيّل مصفوفة إدخال 5×5، وفوقها نافذة 3×3 (الفلتر) تتحرك من أعلى اليسار. في كل موضع، تُضرب قيم الفلتر بالقيم المقابلة من الصورة عنصرًا بعنصر، ثم تُجمع النواتج التسعة في رقم واحد يُكتب في خريطة الخرج.
+### LeNet-5 (the simplest classic architecture)
 
-**الشكل 2 — خريطة الميزات (Feature Map)**
-*التسمية التوضيحية: "كل فلتر مختلف ينتج خريطة ميزات مختلفة: فلتر يكتشف الحواف الأفقية، آخر يكتشف الحواف الرأسية، وهكذا."*
-عندما ينزلق فلتر واحد عبر الصورة كاملة، ينتج شبكة جديدة (خريطة) تُظهر أين وُجد النمط الذي يبحث عنه هذا الفلتر، وبأي قوة (قيمة أعلى = تطابق أقوى).
+```
+[Input Image] → [Conv + Activation] → [Pooling] → [Conv + Activation] → [Pooling]
+             → [Flatten] → [Fully Connected] → [Fully Connected] → [Classification Output]
+```
+- Only two convolutional layers, each followed by a pooling layer to gradually reduce spatial dimensions.
+- Ends with small Fully Connected layers that produce the final decision.
+- Originally designed for recognizing handwritten digits.
 
-**الشكل 3 — الخطوة (Stride)**
-*التسمية التوضيحية: "Stride=1 يحرّك الفلتر بكسلًا واحدًا في كل مرة (تفاصيل أكثر، خرج أكبر)؛ Stride=2 يقفز بكسلين (تفاصيل أقل، خرج أصغر بمقدار النصف تقريبًا)."*
-تخيّل نفس صورة 5×5 مع فلتر 3×3: عند Stride=1 نحصل على خريطة خرج 3×3، بينما عند Stride=2 نحصل على خريطة أصغر (2×2 تقريبًا) لأن الفلتر يقفز مواضع أكثر في كل مرة.
+### AlexNet (the 2012 turning point)
 
-**الشكل 4 — الحشو (Padding)**
-*التسمية التوضيحية: "إضافة إطار من الأصفار حول الصورة الأصلية قبل الالتفاف، حتى تُعالَج بكسلات الحواف بنفس عدد المرات التي تُعالَج بها بكسلات المنتصف."*
-بدون Padding، بكسلات الأطراف تُشارك في عدد أقل من عمليات الالتفاف مقارنة بالبكسلات الوسطى، مما يفقدها بعض المعلومات. إضافة حدود من الأصفار (Zero-Padding) تحل هذه المشكلة، وتسمح أيضًا بالتحكم الدقيق في حجم خريطة الخرج (مثلًا الإبقاء عليه بنفس حجم الإدخال — "Same Padding").
+```
+[Input Image] → [Large Conv + ReLU] → [Pooling] → [Conv + ReLU] → [Pooling]
+             → [Conv + ReLU] × 3 → [Pooling] → [Flatten]
+             → [FC + Dropout] × 2 → [Classification Output]
+```
+- Much deeper than LeNet (5 convolutional layers).
+- Used ReLU instead of slower activation functions, and Dropout to reduce overfitting.
+- The first architecture to prove that deep networks could be trained practically on massive datasets (ImageNet) using GPUs.
 
-**الشكل 5 — التجميع الأعظمي (Max Pooling)**
-*التسمية التوضيحية: "نافذة 2×2 تنزلق فوق خريطة الميزات وتُبقي فقط على أعلى قيمة في كل منطقة، فتُصغّر الخريطة للنصف مع الحفاظ على أقوى الإشارات."*
-مثال: منطقة 2×2 تحتوي القيم (2, 2, 9, 4) → يُبقي Max Pooling على القيمة 9 فقط ويتجاهل الباقي. هذا يقلل الحجم ويقلل الحساسية لإزاحات صغيرة في الصورة.
+### VGG (simplicity and consistent depth)
+
+```
+[Input Image] → [Conv 3×3 + ReLU] ×2 → [Pooling]
+             → [Conv 3×3 + ReLU] ×2 → [Pooling]
+             → [Conv 3×3 + ReLU] ×3 → [Pooling]  (this block pattern repeats)
+             → [Flatten] → [FC] ×3 → [Classification Output]
+```
+- Relies entirely on small, repeated 3×3 filters, instead of varying larger filter sizes.
+- Its large depth (16 or 19 layers) is what gives it strong representational power, at the cost of higher computation.
+
+> **Note:** The practical example in this guide (Section 7) uses a simpler architecture than these three (just 3 blocks of Conv+ReLU+Pooling), which is entirely sufficient for a simple binary classification problem like "cat or dog," and illustrates the exact same principles without the computational complexity of the larger architectures.
 
 ---
 
-## 6. المسار الكامل من البيانات إلى التنبؤ (Pipeline Walkthrough)
+## 5. Illustrated Explanations
 
-المسار العملي الكامل لأي مشروع تصنيف صور بـ CNN يمر بالمراحل التالية:
+> The figures below are described in text (no actual drawing) so you can sketch them yourself or picture them clearly while reading.
 
-1. **تحميل البيانات (Data Loading):** قراءة الصور من مجلدات مصنّفة (مثلًا مجلد `Cat` ومجلد `Dog`)، وربط كل صورة بتصنيفها تلقائيًا حسب اسم المجلد.
-2. **المعالجة المسبقة (Preprocessing):** توحيد أبعاد كل الصور (مثلًا 64×64)، وتحويلها من صيغة صورة (Image) إلى Tensor رقمي تفهمه الشبكة، مع تطبيع القيم (Normalization) عادةً بين 0 و1.
-3. **التوسيع (Augmentation — اختياري):** توليد نسخ معدّلة من الصور الأصلية (قلب أفقي، تدوير بسيط، تغيير سطوع) لزيادة تنوع بيانات التدريب وتقليل الحفظ الزائد (Overfitting). لم يُستخدم في المثال العملي هنا للحفاظ على بساطته، لكنه إضافة شائعة ومفيدة.
-4. **تقسيم البيانات (Train/Test Split):** فصل البيانات إلى مجموعة تدريب (لتعلّم الأوزان) ومجموعة اختبار (لتقييم الأداء على بيانات لم تُر أثناء التدريب).
-5. **تعريف النموذج (Model Definition):** بناء بنية الشبكة (طبقات Conv + Pooling + Fully Connected) كما سنرى بالتفصيل في القسم القادم.
-6. **حلقة التدريب (Training Loop):** لكل حزمة (Batch) من الصور: تمرير أمامي (Forward Pass) لحساب التنبؤ، حساب الخسارة (Loss)، تمرير خلفي (Backward Pass) لحساب التدرجات، ثم تحديث الأوزان عبر المُحسِّن (Optimizer). تُكرَّر هذه الخطوات لعدة "حِقَب" (Epochs).
-7. **التقييم (Evaluation):** تشغيل النموذج على بيانات الاختبار (بدون تحديث الأوزان) لقياس الدقة الحقيقية على بيانات جديدة.
-8. **الاستدلال (Inference):** استخدام النموذج المدرَّب للتنبؤ بصورة جديدة فردية لم تكن ضمن البيانات أصلًا.
+**Figure 1 — The Filter (Kernel) and Convolution**
+*Caption: "A 3×3 filter slides across the input image, multiplies its values with the pixels underneath, then sums the results into a single cell in the output map."*
+Picture a 5×5 input matrix, with a 3×3 window (the filter) moving across it starting from the top-left. At each position, the filter's values are multiplied element-wise with the corresponding image values, then the nine products are summed into one number written into the output feature map.
+
+**Figure 2 — The Feature Map**
+*Caption: "Each different filter produces a different feature map: one filter detects horizontal edges, another detects vertical edges, and so on."*
+When a single filter slides across the whole image, it produces a new grid (map) showing where in the image the pattern it's looking for was found, and how strongly (a higher value = a stronger match).
+
+**Figure 3 — Stride**
+*Caption: "Stride=1 moves the filter one pixel at a time (more detail, larger output); Stride=2 skips two pixels at a time (less detail, roughly half the output size)."*
+Picture the same 5×5 image with a 3×3 filter: with Stride=1 we get a 3×3 output map, while with Stride=2 we get a smaller map (roughly 2×2) because the filter jumps more positions each step.
+
+**Figure 4 — Padding**
+*Caption: "Adding a border of zeros around the original image before convolution, so that edge pixels are processed the same number of times as center pixels."*
+Without padding, edge pixels participate in fewer convolution operations than central pixels, losing some information. Adding a border of zeros (zero-padding) solves this, and also gives precise control over the output feature map size (e.g., keeping it the same size as the input — "Same Padding").
+
+**Figure 5 — Max Pooling**
+*Caption: "A 2×2 window slides over the feature map and keeps only the highest value in each region, shrinking the map by half while preserving the strongest signals."*
+Example: a 2×2 region containing the values (2, 2, 9, 4) → Max Pooling keeps only the value 9 and discards the rest. This reduces size and reduces sensitivity to small shifts in the image.
 
 ---
 
-## 7. شرح الكود (Code Explanation) — PyTorch
+## 6. Pipeline Walkthrough (Data → Prediction)
 
-المثال التالي هو تطبيق حقيقي كامل لتصنيف ثنائي (قطة/كلب) باستخدام CNN بسيطة في PyTorch، مقسّم ومشروح خطوة بخطوة.
+The full practical pipeline for any image classification project with a CNN goes through these stages:
 
-### 7.1 استيراد المكتبات
+1. **Data Loading:** reading images from labeled folders (e.g., a `Cat` folder and a `Dog` folder), automatically linking each image to its label based on the folder name.
+2. **Preprocessing:** standardizing the dimensions of every image (e.g., 64×64), converting them from an image format into a numeric Tensor the network understands, usually normalizing pixel values between 0 and 1.
+3. **Augmentation (optional):** generating modified copies of the original images (horizontal flip, slight rotation, brightness change) to increase training data diversity and reduce overfitting. Not used in the practical example below to keep it simple, but it's a common and useful addition.
+4. **Train/Test Split:** splitting the data into a training set (to learn the weights) and a test set (to evaluate performance on data never seen during training).
+5. **Model Definition:** building the network architecture (Conv + Pooling + Fully Connected layers), as detailed in the next section.
+6. **Training Loop:** for each batch of images — a forward pass computes the prediction, the loss is calculated, a backward pass computes the gradients, and the optimizer updates the weights. These steps repeat for several "epochs."
+7. **Evaluation:** running the model on the test set (without updating weights) to measure real performance on unseen data.
+8. **Inference:** using the trained model to predict a single new image that wasn't part of the original dataset at all.
+
+---
+
+## 7. Code Explanation — PyTorch
+
+The following example is a complete, real binary classification implementation (cat/dog) using a simple CNN in PyTorch, broken down and explained step by step.
+
+### 7.1 Importing Libraries
 
 ```python
 import torch
@@ -150,9 +150,9 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
 ```
-**هنا قمت بـ** استيراد PyTorch الأساسي (`torch`)، وحزمة بناء الشبكات العصبية (`nn`)، وحزمة خوارزميات التحسين مثل Adam (`optim`)، بالإضافة إلى أدوات `torchvision` للتعامل مع بيانات الصور، و`DataLoader` لتغذية البيانات على دفعات (Batches) أثناء التدريب.
+**Here I imported** the core PyTorch library (`torch`), the neural network building package (`nn`), the optimization algorithms package such as Adam (`optim`), plus `torchvision` utilities for handling image data, and `DataLoader` for feeding data to the model in batches during training.
 
-### 7.2 تثبيت البذرة العشوائية (Reproducibility)
+### 7.2 Fixing the Random Seed (Reproducibility)
 
 ```python
 import random
@@ -163,9 +163,9 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 ```
-**هنا قمت بـ** تثبيت قيمة البذرة العشوائية (Seed) لكل من Python وNumPy وPyTorch، بحيث تُعطي كل عملية تشغيل للكود نفس النتائج بالضبط (نفس تقسيم البيانات، نفس الأوزان الابتدائية)، وهو أمر مهم جدًا لمقارنة التجارب بشكل عادل.
+**Here I fixed** the random seed for Python, NumPy, and PyTorch, so that every run of the code produces exactly the same results (the same data split, the same initial weights) — this is important for comparing experiments fairly.
 
-### 7.3 تجهيز التحويلات (Transforms) وتحميل البيانات
+### 7.3 Setting Up Transforms and Loading the Data
 
 ```python
 IMAGE_SIZE = 64
@@ -173,7 +173,7 @@ BATCH_SIZE = 32
 
 transform = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.ToTensor()  # تحويل الصورة إلى Tensor بشكل [3, 64, 64]
+    transforms.ToTensor()  # Convert the image into a Tensor shaped [3, 64, 64]
 ])
 
 dataset = datasets.ImageFolder(
@@ -184,9 +184,9 @@ dataset = datasets.ImageFolder(
 print("Classes:", dataset.classes)
 print("Total images:", len(dataset))
 ```
-**هنا قمت بـ** تعريف سلسلة معالجة (Pipeline) تُغيّر حجم كل صورة إلى 64×64 بكسل، ثم تحوّلها إلى Tensor رقمي بالشكل `[القنوات, الارتفاع, العرض]`. بعدها استخدمت `ImageFolder` التي تقرأ الصور تلقائيًا من مجلدات فرعية (مجلد باسم `Cat` ومجلد باسم `Dog`) وتُسند التصنيف حسب اسم المجلد نفسه.
+**Here I defined** a processing pipeline that resizes every image to 64×64 pixels, then converts it into a numeric Tensor shaped `[Channels, Height, Width]`. I then used `ImageFolder`, which automatically reads images from subfolders (a `Cat` folder and a `Dog` folder) and assigns the label based on the folder name itself.
 
-### 7.4 تقسيم البيانات وتجهيز الـ DataLoaders
+### 7.4 Splitting the Data and Building the DataLoaders
 
 ```python
 train_size = int(0.90 * len(dataset))
@@ -201,47 +201,47 @@ train_dataset, test_dataset = random_split(
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 ```
-**هنا قمت بـ** تقسيم البيانات إلى 90% تدريب و10% اختبار، ثم تغليف كل جزء في `DataLoader` يُغذّي الشبكة بدفعات (Batches) من 32 صورة. لاحظ أن `shuffle=True` مُفعّل فقط لبيانات التدريب (لخلط ترتيب الصور كل حِقبة)، بينما بيانات الاختبار تبقى بترتيب ثابت.
+**Here I split** the data into 90% training and 10% testing, then wrapped each part in a `DataLoader` that feeds the network batches of 32 images at a time. Note that `shuffle=True` is only enabled for the training data (to shuffle the image order every epoch), while the test data keeps a fixed order.
 
-### 7.5 تحديد جهاز التشغيل (CPU/GPU)
+### 7.5 Selecting the Compute Device (CPU/GPU)
 
 ```python
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using:", device)
 ```
-**هنا قمت بـ** التحقق تلقائيًا من توفر GPU (كرت رسومات متوافق مع CUDA)، واستخدامه إن وُجد لتسريع التدريب بشكل كبير، أو الرجوع إلى المعالج العادي (CPU) في حال عدم توفره.
+**Here I checked** automatically whether a CUDA-compatible GPU is available, using it if found to significantly speed up training, or falling back to the regular CPU otherwise.
 
-### 7.6 تعريف بنية الشبكة (Model Definition)
+### 7.6 Defining the Model Architecture
 
 ```python
 class SimpleCNN(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # الجزء الالتفافي: يستخرج الميزات من الصورة
+        # The convolutional part: extracts features from the image
         self.cnn = nn.Sequential(
-            # الإدخال: 3 قنوات (RGB)، الخرج: 16 فلترًا
+            # Input: 3 channels (RGB), Output: 16 filters
             nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            # الإدخال: 16 خريطة ميزات، الخرج: 32 فلترًا
+            # Input: 16 feature maps, Output: 32 filters
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            # الإدخال: 32 خريطة ميزات، الخرج: 64 فلترًا
+            # Input: 32 feature maps, Output: 64 filters
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
-        # الجزء المصنِّف: يتخذ القرار النهائي من الميزات المستخرجة
+        # The classifier part: makes the final decision from the extracted features
         self.classifier = nn.Sequential(
-            nn.Flatten(),                  # [قنوات, ارتفاع, عرض] => متجه واحد
-            nn.Linear(64 * 8 * 8, 128),    # طبقة مخفية
+            nn.Flatten(),                  # [channels, height, width] => single vector
+            nn.Linear(64 * 8 * 8, 128),    # Hidden layer
             nn.ReLU(),
-            nn.Linear(128, 1)              # الخرج: قيمة واحدة (قطة أو كلب)
+            nn.Linear(128, 1)              # Output: cat or dog
         )
 
     def forward(self, x):
@@ -249,11 +249,11 @@ class SimpleCNN(nn.Module):
         x = self.classifier(x)
         return x
 ```
-**هنا قمت بـ** بناء الشبكة على جزئين: جزء التفافي (`self.cnn`) يتكون من 3 كتل متطابقة البنية (Conv2d → ReLU → MaxPool2d)، حيث يزداد عدد الفلاتر تدريجيًا (16 → 32 → 64) مع تقلّص أبعاد الصورة المكانية في كل مرة (بسبب Max Pooling بخطوة 2). ثم جزء التصنيف (`self.classifier`) الذي يُسطّح خرج الجزء الالتفافي (Flatten) ويمرّره عبر طبقتين Fully Connected لينتج رقمًا واحدًا يمثّل درجة الثقة في أن الصورة "كلب".
+**Here I built** the network in two parts: a convolutional part (`self.cnn`) made of 3 identical blocks (Conv2d → ReLU → MaxPool2d), where the number of filters grows progressively (16 → 32 → 64) while the spatial dimensions shrink each time (because of Max Pooling with stride 2). Then a classifier part (`self.classifier`) that flattens the convolutional output and passes it through two Fully Connected layers to produce a single number representing the confidence that the image is a "dog."
 
-> **ملاحظة حسابية:** الصورة تبدأ بحجم 64×64. بعد كل MaxPool2d(stride=2) يتقلص كل بُعد للنصف: 64→32→16→8. لذلك خريطة الميزات النهائية بحجم 8×8 مع 64 قناة، ومن هنا يأتي `64 * 8 * 8` في طبقة `Linear` الأولى.
+> **Dimension note:** the image starts at 64×64. After each MaxPool2d(stride=2), each dimension halves: 64→32→16→8. That's why the final feature map is 8×8 with 64 channels, and hence `64 * 8 * 8` in the first `Linear` layer.
 
-### 7.7 تجهيز دالة الخسارة والمُحسِّن
+### 7.7 Setting Up the Loss Function and Optimizer
 
 ```python
 model = SimpleCNN().to(device)
@@ -261,15 +261,15 @@ model = SimpleCNN().to(device)
 loss_function = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 ```
-**هنا قمت بـ** نقل النموذج إلى الجهاز المناسب (GPU/CPU)، ثم اخترت `BCEWithLogitsLoss` كدالة خسارة (مناسبة لتصنيف ثنائي حيث الخرج قيمة واحدة قبل تطبيق Sigmoid)، واستخدمت `Adam` كمُحسِّن بمعدل تعلّم (Learning Rate) قدره 0.001 لتحديث أوزان الشبكة تدريجيًا.
+**Here I moved** the model to the appropriate device (GPU/CPU), then chose `BCEWithLogitsLoss` as the loss function (suitable for binary classification where the output is a single raw value before Sigmoid), and used `Adam` as the optimizer with a learning rate of 0.001 to gradually update the network's weights.
 
-### 7.8 حلقة التدريب (Training Loop)
+### 7.8 Training Loop
 
 ```python
 EPOCHS = 4
 
 for epoch in range(EPOCHS):
-    model.train()  # وضع التدريب (يُفعّل طبقات مثل Dropout إن وُجدت)
+    model.train()  # training mode (activates layers like Dropout, if present)
 
     correct = 0
     total = 0
@@ -278,13 +278,13 @@ for epoch in range(EPOCHS):
         images = images.to(device)
         labels = labels.float().unsqueeze(1).to(device)
 
-        optimizer.zero_grad()        # تصفير التدرجات المتراكمة من الدفعة السابقة
+        optimizer.zero_grad()        # clear gradients accumulated from the previous batch
 
-        outputs = model(images)      # التمرير الأمامي: حساب تنبؤ النموذج
-        loss = loss_function(outputs, labels)  # حساب الخسارة
+        outputs = model(images)      # forward pass: compute the model's prediction
+        loss = loss_function(outputs, labels)  # compute the loss
 
-        loss.backward()              # التمرير الخلفي: حساب التدرجات
-        optimizer.step()             # تحديث الأوزان بناءً على التدرجات
+        loss.backward()              # backward pass: compute gradients
+        optimizer.step()             # update the weights based on the gradients
 
         predictions = (torch.sigmoid(outputs) >= 0.5).float()
         correct += (predictions == labels).sum().item()
@@ -293,17 +293,17 @@ for epoch in range(EPOCHS):
     accuracy = 100 * correct / total
     print(f"Epoch {epoch + 1}/{EPOCHS} | Training Accuracy: {accuracy:.2f}%")
 ```
-**هنا قمت بـ** تكرار عملية التدريب لعدد 4 حِقب (Epochs). في كل دفعة (Batch) من الصور: أصفّر التدرجات القديمة، أمرّر الصور عبر النموذج للحصول على تنبؤات، أحسب مدى بُعد هذه التنبؤات عن التصنيفات الحقيقية (Loss)، ثم أستخدم `loss.backward()` لحساب مساهمة كل وزن في الخطأ (عبر Backpropagation)، وأخيرًا `optimizer.step()` يُحدّث الأوزان لتقليل هذا الخطأ في المرة القادمة. كما أحسب دقة التدريب لمتابعة تقدّم النموذج بعد كل حِقبة.
+**Here I repeated** the training process for 4 epochs. For each batch of images: I clear the old gradients, pass the images through the model to get predictions, compute how far these predictions are from the true labels (loss), then use `loss.backward()` to compute each weight's contribution to the error (via backpropagation), and finally `optimizer.step()` updates the weights to reduce that error next time. I also track training accuracy to monitor progress after each epoch.
 
-### 7.9 التقييم على بيانات الاختبار
+### 7.9 Evaluating on the Test Set
 
 ```python
-model.eval()  # وضع التقييم (يُعطّل Dropout ويُثبّت BatchNorm إن وُجدا)
+model.eval()  # evaluation mode (disables Dropout, freezes BatchNorm, if present)
 
 correct = 0
 total = 0
 
-with torch.no_grad():  # لا حاجة لحساب التدرجات أثناء التقييم
+with torch.no_grad():  # no need to compute gradients during evaluation
     for images, labels in test_loader:
         images = images.to(device)
         labels = labels.float().unsqueeze(1).to(device)
@@ -317,17 +317,17 @@ with torch.no_grad():  # لا حاجة لحساب التدرجات أثناء ا
 test_accuracy = 100 * correct / total
 print(f"Test Accuracy: {test_accuracy:.2f}%")
 ```
-**هنا قمت بـ** تحويل النموذج لوضع التقييم (`model.eval()`) وتعطيل حساب التدرجات (`torch.no_grad()`) لأننا لا نحتاج تحديث الأوزان هنا، فقط قياس أداء النموذج على بيانات لم يرها أثناء التدريب، وهو المقياس الحقيقي لمدى قدرته على التعميم (Generalization).
+**Here I switched** the model to evaluation mode (`model.eval()`) and disabled gradient computation (`torch.no_grad()`) since we don't need to update weights here — we're only measuring the model's performance on data it never saw during training, which is the real measure of its ability to generalize.
 
-### 7.10 استخدام النموذج للتنبؤ بصورة جديدة
+### 7.10 Using the Model to Predict a New Image
 
 ```python
 from PIL import Image
 
 image = Image.open("my_photo.jpg").convert("RGB")
 
-# نفس المعالجة المستخدمة أثناء التدريب
-image_tensor = transform(image).unsqueeze(0).to(device)  # إضافة بُعد الدفعة (Batch)
+# Same preprocessing used during training
+image_tensor = transform(image).unsqueeze(0).to(device)  # add a batch dimension
 
 model.eval()
 with torch.no_grad():
@@ -339,33 +339,33 @@ confidence = dog_probability if dog_probability >= 0.5 else 1 - dog_probability
 
 print(f"Prediction: {prediction} ({confidence:.2%})")
 ```
-**هنا قمت بـ** تطبيق نفس خطوات المعالجة المسبقة (`transform`) المستخدمة أثناء التدريب على صورة جديدة تمامًا، ثم إضافة بُعد إضافي (`unsqueeze(0)`) لأن النموذج يتوقع دفعة من الصور وليس صورة مفردة. بعدها أحوّل خرج النموذج (رقم خام) إلى احتمال عبر `sigmoid`، وأقرر التصنيف النهائي بناءً على العتبة 0.5.
+**Here I applied** the exact same preprocessing steps (`transform`) used during training to a brand-new image, then added an extra dimension (`unsqueeze(0)`) since the model expects a batch of images rather than a single one. I then converted the model's raw output into a probability via `sigmoid`, and made the final classification decision based on the 0.5 threshold.
 
 ---
 
-## 8. نصائح عملية (Practical Tips)
+## 8. Practical Tips
 
-- **زيادة عدد الحِقب (Epochs) تدريجيًا:** ابدأ بعدد قليل (مثل 3-4) للتأكد من أن الكود يعمل بدون أخطاء، ثم زِد العدد ولاحظ منحنى الدقة/الخسارة.
-- **راقب الفرق بين دقة التدريب ودقة الاختبار:** إذا كانت دقة التدريب مرتفعة جدًا بينما دقة الاختبار منخفضة، فهذا مؤشر على **Overfitting** (حفظ الشبكة للبيانات بدل تعلّم الأنماط العامة). الحلول الشائعة: إضافة Dropout، تقليل حجم الشبكة، أو استخدام Data Augmentation.
-- **اختيار معدل التعلّم (Learning Rate):** قيمة مرتفعة جدًا تجعل التدريب غير مستقر (الخسارة تتذبذب أو تتفاقم)، وقيمة منخفضة جدًا تجعل التدريب بطيئًا جدًا. القيمة `0.001` مع Adam نقطة بداية جيدة شائعة.
-- **تأكد من تطابق أبعاد Flatten:** الخطأ الأكثر شيوعًا عند المبتدئين هو حساب خاطئ لحجم الإدخال في أول طبقة `Linear` بعد `Flatten`. احسبه دائمًا بناءً على حجم الصورة الأصلي وعدد مرات Pooling المطبّقة.
-- **توازن الفئات (Class Balance):** إذا كان عدد صور القطط مختلفًا بشدة عن عدد صور الكلاب، فقد ينحاز النموذج للفئة الأكثر تكرارًا. تحقق من توازن البيانات قبل التدريب.
-- **استخدم GPU عند توفره:** الفرق في سرعة التدريب بين CPU وGPU قد يكون بعشرات الأضعاف، خصوصًا مع صور كبيرة أو بيانات كثيرة.
-- **ثبّت البذرة العشوائية (Seed)** دائمًا عند تجربة تغييرات على النموذج، حتى تكون المقارنات بين التجارب عادلة.
+- **Increase epochs gradually:** start with a small number (e.g., 3–4) to confirm the code runs correctly, then increase it and watch the accuracy/loss curve.
+- **Watch the gap between training and test accuracy:** if training accuracy is very high while test accuracy is low, that's a sign of **overfitting** (the network memorizing the data instead of learning general patterns). Common fixes: adding Dropout, reducing model size, or using data augmentation.
+- **Choosing the learning rate:** too high makes training unstable (loss oscillates or diverges), too low makes training extremely slow. `0.001` with Adam is a common, solid starting point.
+- **Make sure the Flatten dimensions match:** the most common beginner mistake is miscalculating the input size of the first `Linear` layer after `Flatten`. Always compute it based on the original image size and how many times pooling was applied.
+- **Class balance:** if the number of cat images differs drastically from the number of dog images, the model may become biased toward the more frequent class. Check data balance before training.
+- **Use a GPU when available:** the training speed difference between CPU and GPU can be tens of times faster, especially with larger images or more data.
+- **Always fix the random seed** when experimenting with changes to the model, so comparisons between experiments stay fair.
 
 ---
 
-## 9. تعليمات التشغيل (Running Instructions)
+## 9. Running Instructions
 
-### المتطلبات (Dependencies)
+### Dependencies
 
 ```bash
 pip install torch torchvision numpy pillow matplotlib
 ```
 
-### خطوات التشغيل
+### Steps to Run
 
-1. جهّز مجلد بيانات بالشكل التالي (يتطلبه `ImageFolder` تلقائيًا):
+1. Prepare a data folder in the following structure (required automatically by `ImageFolder`):
 ```
 PetImages/
 ├── Cat/
@@ -375,11 +375,11 @@ PetImages/
     ├── image1.jpg
     └── ...
 ```
-2. عدّل قيمة `root` في الكود لتُشير إلى مسار مجلد `PetImages` لديك.
-3. شغّل الكود بالترتيب الموضّح في القسم 7 (استيراد → تحميل بيانات → تعريف نموذج → تدريب → تقييم).
-4. عند انتهاء كل حِقبة، ستظهر دقة التدريب في الطرفية (Terminal)، وبعد التدريب الكامل ستظهر دقة الاختبار النهائية.
+2. Update the `root` value in the code to point to your local `PetImages` folder path.
+3. Run the code in the order shown in Section 7 (imports → data loading → model definition → training → evaluation).
+4. Training accuracy will print at the end of each epoch, and the final test accuracy will print after training completes.
 
-### الخرج المتوقع (Expected Output)
+### Expected Output
 
 ```
 Using: cuda
@@ -391,19 +391,15 @@ Epoch 3/4 | Training Accuracy: ~XX%
 Epoch 4/4 | Training Accuracy: ~XX%
 Test Accuracy: ~XX%
 ```
-(القيم الفعلية تعتمد على حجم البيانات وجودتها).
+(Actual values depend on the size and quality of your dataset.)
 
 ---
 
-## 10. المراجع والقراءات الإضافية (References)
+## 10. References and Further Reading
 
-- الدليل الرسمي لـ PyTorch: [pytorch.org/tutorials](https://pytorch.org/tutorials/)
-- توثيق `torchvision.datasets.ImageFolder` الرسمي على موقع PyTorch.
-- ورقة LeNet-5 الأصلية — Yann LeCun وزملاؤه (1998)، أساس معماريات CNN الحديثة.
-- ورقة AlexNet — Krizhevsky, Sutskever, Hinton (2012)، نقطة التحوّل في مسابقة ImageNet.
-- ورقة VGGNet — Simonyan & Zisserman (2014)، مبدأ الفلاتر الصغيرة المكررة.
-- كورس CS231n (Stanford) — "Convolutional Neural Networks for Visual Recognition"، من أفضل المصادر التعليمية المجانية المتعمقة في CNNs.
-
----
-
-*تم إعداد هذا الدليل بالاستناد إلى بنية عرض تقديمي تمهيدي عن CNNs، ومُطعَّم بشرح كود عملي حقيقي لمشروع تصنيف قطط/كلاب بـ PyTorch.*
+- Official PyTorch tutorials: [pytorch.org/tutorials](https://pytorch.org/tutorials/)
+- Official `torchvision.datasets.ImageFolder` documentation on the PyTorch website.
+- The original LeNet-5 paper — Yann LeCun et al. (1998), the foundation of modern CNN architectures.
+- The AlexNet paper — Krizhevsky, Sutskever, Hinton (2012), the turning point of the ImageNet competition.
+- The VGGNet paper — Simonyan & Zisserman (2014), the principle of small, repeated filters.
+- Stanford's CS231n course — "Convolutional Neural Networks for Visual Recognition," one of the best free, in-depth resources on CNNs.
