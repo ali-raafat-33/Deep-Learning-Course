@@ -39,6 +39,12 @@ A Convolutional Neural Network (CNN) is a type of neural network built specifica
 | Fully connected | Combines features into the final decision |
 | Loss function | Measures the error and drives training |
 
+### The full architecture, end to end
+
+The diagram below shows how all these pieces connect for the cat/dog classifier built later in this guide: a raw 64×64×3 image is passed through three Conv+ReLU+Pool blocks that shrink the spatial size while growing the number of filters, then flattened and fed through two fully connected layers down to a single Cat/Dog decision.
+
+![CNN architecture diagram — input image through convolution, ReLU, and pooling blocks, then flatten and fully connected layers to a Cat/Dog output](cnn_architecture.svg)
+
 ## 04. CNN vs. Traditional Networks
 
 Traditional (fully connected) networks treat every pixel as a separate, independent input, which needs huge numbers of parameters and ignores spatial patterns. CNNs share the same small filter across the whole image, making them far more efficient and better at spotting a pattern no matter where it appears.
@@ -228,7 +234,7 @@ class SimpleCNN(nn.Module):
         x = self.classifier(x)
         return x
 ```
-**Here I built** the network in two parts: a convolutional part (`self.cnn`) made of 3 identical blocks (Conv2d → ReLU → MaxPool2d), where the number of filters grows progressively (16 → 32 → 64) while the spatial dimensions shrink each time (because of Max Pooling with stride 2). Then a classifier part (`self.classifier`) that flattens the convolutional output and passes it through two Fully Connected layers to produce a single number representing the confidence that the image is a "dog."
+**Here I built** the network in two parts: a convolutional part (`self.cnn`) made of 3 identical blocks (Conv2d → ReLU → MaxPool2d), where the number of filters grows progressively (16 → 32 → 64) while the spatial dimensions shrink each time (because of Max Pooling with stride 2). Then a classifier part (`self.classifier`) that flattens the convolutional output and passes it through two Fully Connected layers to produce a single number representing the confidence that the image is a "dog." This is exactly the architecture shown in the diagram above.
 
 > **Dimension note:** the image starts at 64×64. After each MaxPool2d(stride=2), each dimension halves: 64→32→16→8. That's why the final feature map is 8×8 with 64 channels, and hence `64 * 8 * 8` in the first `Linear` layer.
 
