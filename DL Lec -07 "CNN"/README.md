@@ -1,4 +1,4 @@
-# CNN (Convolutional Neural Network) — Student Guide
+# CNN (Convolutional Neural Network)
 
 ## Prerequisites
 
