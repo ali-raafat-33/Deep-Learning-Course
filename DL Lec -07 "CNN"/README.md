@@ -132,26 +132,6 @@ Max pooling looks at a small region of the feature map (e.g., 2×2) and keeps on
 Average pooling takes the average of the values in each region instead of the maximum, producing a smoother, more gradual downsampling of the feature map.
 
 ---
-
-## Architecture Blocks
-
-**LeNet-5** — the simplest classic architecture:
-```
-[Input] → [Conv+Activation] → [Pool] → [Conv+Activation] → [Pool] → [Flatten] → [FC]×2 → [Output]
-```
-
-**AlexNet** — the 2012 turning point, much deeper, introduced ReLU + Dropout at scale:
-```
-[Input] → [Conv+ReLU] → [Pool] → [Conv+ReLU] → [Pool] → [Conv+ReLU]×3 → [Pool] → [FC+Dropout]×2 → [Output]
-```
-
-**VGG** — simplicity and depth, built entirely from repeated small 3×3 filters:
-```
-[Input] → ([Conv 3×3+ReLU]×2 → [Pool]) repeated in growing blocks → [Flatten] → [FC]×3 → [Output]
-```
-
-> The practical example below uses a simpler 3-block architecture, sufficient for a binary classification task and built on the same principles.
-
 ## Pipeline Walkthrough
 
 1. **Data Loading** — read images from labeled folders.
