@@ -1,140 +1,295 @@
-# Understanding Convolutional Neural Networks (CNNs) — A Practical Student Guide
+# CNN (Convolutional Neural Network) — Student Guide
 
-## 1. Title and Purpose
+## Purpose
 
-**Goal of this guide:** to give university students a clear, structured understanding of Convolutional Neural Networks (CNNs) — starting from *why* we need CNNs at all, moving through every core component (Convolution, Pooling, Stride, Padding) both mathematically and visually, and ending with a fully documented, line-by-line practical example that trains a real image classifier (cats vs. dogs) in PyTorch.
+This README explains Convolutional Neural Networks (CNNs) step by step, in the same order as the companion visual guide. Each section below links to its matching section in the visual guide — click a heading link to see the same concept illustrated with a worked example (grids, numbers, colors) instead of just text.
 
-By the end of this guide you will be able to:
-- Explain the difference between traditional (Fully Connected) networks and CNNs, and why CNNs are better suited to images.
-- Understand how a Kernel/Filter works and what a Feature Map represents.
-- Understand how Stride and Padding affect the output size.
-- Understand the types of Pooling (Max / Average) and why we use them.
-- Read and understand a complete, real PyTorch training pipeline for building, training, and evaluating a CNN.
+> **Companion visual guide:** [open the interactive CNN guide](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#top)
+
+## Prerequisites
+
+- **Python** basics (variables, loops, functions, classes).
+- **NumPy** basics — arrays, shapes, element-wise operations.
+- **General neural network concepts**: neuron, weight, activation function, loss function, backpropagation (a general understanding is enough).
+- **PyTorch** (used in the code example) — basic familiarity with tensors and `nn.Module`.
+- Python 3.9+. A GPU speeds up training but isn't required.
+
+## Table of Contents
+
+| # | Section | Visual guide link |
+|---|---|---|
+| 01 | [Before CNNs](#01-before-cnns) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#before) |
+| 02 | [Why CNNs](#02-why-cnns) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#why) |
+| 03 | [What is a CNN](#03-what-is-a-cnn) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#intro) |
+| 04 | [CNN vs. Traditional](#04-cnn-vs-traditional-networks) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#vs) |
+| 05 | [Pixels](#05-pixels) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#pixels) |
+| 06 | [Image Dimensions](#06-image-dimensions) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#dims) |
+| 07 | [Channels](#07-channels) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#channels) |
+| 08 | [Image Tensors](#08-image-tensors) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#tensors) |
+| 09 | [Convolution](#09-convolution) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#conv) |
+| 10 | [Filters / Kernels](#10-filters--kernels) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#filters) |
+| 11 | [Feature Maps](#11-feature-maps) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#feature-maps) |
+| 12 | [Stride](#12-stride) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#stride) |
+| 13 | [Padding](#13-padding) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#padding) |
+| 14 | [Pooling](#14-pooling) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#pooling) |
+| 15 | [Max Pooling](#15-max-pooling) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#maxpool) |
+| 16 | [Average Pooling](#16-average-pooling) | [→ figure](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#avgpool) |
+
+Also in this README: [Architecture Blocks](#architecture-blocks) · [Pipeline Walkthrough](#pipeline-walkthrough) · [Code Explanation](#code-explanation--pytorch) · [Practical Tips](#practical-tips) · [Running Instructions](#running-instructions) · [References](#references)
 
 ---
 
-## 2. Prerequisites
+## 01. Before CNNs
 
-Before starting, you should ideally have:
+Before CNNs, computers couldn't learn what to look for in an image on their own. Human experts had to hand-design rules and formulas — called "features" — to describe things like edges, corners, or color patterns, then feed those features into a classic machine learning model.
 
-- **Python programming** basics (variables, loops, functions, classes).
-- **NumPy** basics — arrays, shapes, and element-wise operations.
-- **Basic neural network concepts**: what a neuron, weights, activation function, loss function, and backpropagation are (a general understanding is enough — mastery is not required).
-- **PyTorch** (used in the practical example below) or TensorFlow — basic awareness that these libraries build and train neural networks with automatic differentiation.
-- A Python 3.9+ environment. A GPU is optional but speeds up training significantly.
+```
+[Input] → [Human-designed feature extraction] → [ML model] → [Output]
+```
 
----
+This didn't scale: every new pattern needed a new hand-built rule.
 
-## 3. Conceptual Overview
+## 02. Why CNNs
 
-### Before CNNs: Manual Feature Engineering
+Instead of humans hand-crafting features, a CNN learns its own filters directly from data during training. This lets it automatically discover the best patterns to look for — something no hand-designed method could do at scale.
 
-In the past, human experts had to hand-design rules and formulas ("features") to describe edges, corners, and color patterns in an image, which were then fed into a traditional machine learning model. This approach is slow, limited, and doesn't scale well with large, complex datasets.
+Images also have **spatial structure**: nearby pixels are related to each other. CNNs preserve these spatial relationships, while a traditional network would flatten the image into a long list of numbers and lose that structure.
 
-### With CNNs: Learning Features Automatically
+## 03. What is a CNN
 
-Instead of humans hand-crafting filters, a CNN **learns its own filters directly from the data during training**. This lets it automatically discover the best patterns to detect — something that's extremely hard to achieve manually at scale.
-
-### Why CNNs Specifically for Images?
-
-Images have **spatial structure**: nearby pixels are related to each other (an edge, a color region, a texture...). A traditional Fully Connected network flattens the image into a long list of numbers and loses that structure, while a CNN preserves spatial relationships by sliding a small filter over local regions of the image, instead of connecting every single pixel to every neuron.
-
-**Another key benefit:** the same filter is shared (reused) across the entire image, which drastically reduces the number of parameters compared to a Fully Connected network, and lets the network detect a pattern regardless of where it appears in the image.
-
-### Core Components of a CNN
+A Convolutional Neural Network (CNN) is a type of neural network built specifically to process grid-like data, such as images. It automatically learns to recognize patterns like edges, shapes, and objects — without being told what to look for.
 
 | Component | Function |
 |---|---|
-| **Convolution Layer** | Extracts local features (edges, corners, textures) using learnable filters |
-| **Activation Function (usually ReLU)** | Introduces non-linearity so the network can learn complex patterns |
-| **Pooling Layer** | Shrinks the feature map while keeping the most important information, reducing computation |
-| **Flatten Layer** | Converts the 3D output of the convolutional layers into a 1D vector for the Fully Connected layer |
-| **Fully Connected Layer** | Combines the extracted features and produces the final decision (classification) |
-| **Loss Function** | Measures how far the network's prediction is from the true label, and drives training |
+| Convolution layer | Extracts local features using learnable filters |
+| Activation (ReLU) | Introduces non-linearity |
+| Pooling | Shrinks the feature map, keeps the strongest signals |
+| Flatten | Converts 3D feature maps into a 1D vector |
+| Fully connected | Combines features into the final decision |
+| Loss function | Measures the error and drives training |
 
-**How an image is represented internally:** an image is represented as a 3D **Tensor** shaped `Height × Width × Channels`. A grayscale image has 1 channel (brightness), while a color RGB image has 3 channels (Red, Green, Blue) that combine to form every color we see.
+## 04. CNN vs. Traditional Networks
+
+Traditional (fully connected) networks treat every pixel as a separate, independent input, which needs huge numbers of parameters and ignores spatial patterns. CNNs share the same small filter across the whole image, making them far more efficient and better at spotting a pattern no matter where it appears.
+
+## 05. Pixels
+
+A pixel is the smallest unit of a digital image — a single point holding a color or brightness value. An image is simply a grid made up of thousands of these pixels.
+
+## 06. Image Dimensions
+
+Every image has a Height and a Width, measured in pixels (for example, 224 × 224). These dimensions define the size of the grid the CNN will process.
+
+## 07. Channels
+
+A grayscale image has 1 channel, storing only brightness. A color image has 3 channels — Red, Green, and Blue — which combine to form every color you see.
+
+## 08. Image Tensors
+
+A CNN doesn't see a "picture" — it sees a 3D array of numbers shaped `Height × Width × Channels`. This numerical grid, called a **tensor**, is the actual input fed into the network.
+
+## 09. Convolution
+
+Convolution is the core operation of a CNN. A small filter slides across the image, multiplying its values with the pixels underneath and summing the result to detect a specific pattern at that location.
+
+```
+Output[0][0] = (9×0)+(4×2)+(1×1)+(1×1)+(1×0)+(1×1)+(1×2)+(2×0)+(1×1) = 16
+```
+
+## 10. Filters / Kernels
+
+A filter (or kernel) is a small matrix of numbers — often 3×3 — that the network learns during training. Different filters learn to detect different features, such as edges, corners, or textures.
+
+## 11. Feature Maps
+
+As a filter slides across the whole image, it produces a **feature map**: a new grid showing where in the image that particular pattern was found, and how strongly.
+
+## 12. Stride
+
+Stride is how many pixels the filter moves at each step. A stride of 1 moves one pixel at a time (more detail, bigger output); a larger stride skips more pixels (less detail, smaller output).
+
+## 13. Padding
+
+Padding adds a border of zeros around the image before convolution. This lets the filter properly process edge pixels and gives control over the size of the output feature map.
+
+## 14. Pooling
+
+Pooling shrinks the size of feature maps while keeping the most important information. This reduces computation, helps prevent overfitting, and makes the model more robust to small shifts or distortions in the image.
+
+## 15. Max Pooling
+
+Max pooling looks at a small region of the feature map (e.g., 2×2) and keeps only the highest value — the strongest signal that a feature was detected there.
+
+```
+[2 2 7 3]        [9 7]
+[9 4 6 1]   →     [8 6]
+[8 5 2 4]
+[3 1 2 6]
+```
+
+## 16. Average Pooling
+
+Average pooling takes the average of the values in each region instead of the maximum, producing a smoother, more gradual downsampling of the feature map.
 
 ---
 
-## 4. Architecture Blocks
+## Architecture Blocks
 
-Below is a text-based structural description of the most well-known classic CNN architectures, and the role each part plays:
-
-### LeNet-5 (the simplest classic architecture)
-
+**LeNet-5** — the simplest classic architecture:
 ```
-[Input Image] → [Conv + Activation] → [Pooling] → [Conv + Activation] → [Pooling]
-             → [Flatten] → [Fully Connected] → [Fully Connected] → [Classification Output]
+[Input] → [Conv+Activation] → [Pool] → [Conv+Activation] → [Pool] → [Flatten] → [FC]×2 → [Output]
 ```
-- Only two convolutional layers, each followed by a pooling layer to gradually reduce spatial dimensions.
-- Ends with small Fully Connected layers that produce the final decision.
-- Originally designed for recognizing handwritten digits.
 
-### AlexNet (the 2012 turning point)
-
+**AlexNet** — the 2012 turning point, much deeper, introduced ReLU + Dropout at scale:
 ```
-[Input Image] → [Large Conv + ReLU] → [Pooling] → [Conv + ReLU] → [Pooling]
-             → [Conv + ReLU] × 3 → [Pooling] → [Flatten]
-             → [FC + Dropout] × 2 → [Classification Output]
+[Input] → [Conv+ReLU] → [Pool] → [Conv+ReLU] → [Pool] → [Conv+ReLU]×3 → [Pool] → [FC+Dropout]×2 → [Output]
 ```
-- Much deeper than LeNet (5 convolutional layers).
-- Used ReLU instead of slower activation functions, and Dropout to reduce overfitting.
-- The first architecture to prove that deep networks could be trained practically on massive datasets (ImageNet) using GPUs.
 
-### VGG (simplicity and consistent depth)
-
+**VGG** — simplicity and depth, built entirely from repeated small 3×3 filters:
 ```
-[Input Image] → [Conv 3×3 + ReLU] ×2 → [Pooling]
-             → [Conv 3×3 + ReLU] ×2 → [Pooling]
-             → [Conv 3×3 + ReLU] ×3 → [Pooling]  (this block pattern repeats)
-             → [Flatten] → [FC] ×3 → [Classification Output]
+[Input] → ([Conv 3×3+ReLU]×2 → [Pool]) repeated in growing blocks → [Flatten] → [FC]×3 → [Output]
 ```
-- Relies entirely on small, repeated 3×3 filters, instead of varying larger filter sizes.
-- Its large depth (16 or 19 layers) is what gives it strong representational power, at the cost of higher computation.
 
-> **Note:** The practical example in this guide (Section 7) uses a simpler architecture than these three (just 3 blocks of Conv+ReLU+Pooling), which is entirely sufficient for a simple binary classification problem like "cat or dog," and illustrates the exact same principles without the computational complexity of the larger architectures.
+> The practical example below uses a simpler 3-block architecture, sufficient for a binary classification task and built on the same principles.
+
+## Pipeline Walkthrough
+
+1. **Data Loading** — read images from labeled folders.
+2. **Preprocessing** — resize, convert to tensor, normalize.
+3. **Augmentation (optional)** — flips, rotations, brightness jitter.
+4. **Train/Test Split** — separate data for training vs. honest evaluation.
+5. **Model Definition** — stack Conv + Pooling + Fully Connected layers.
+6. **Training Loop** — forward pass → loss → backward pass → optimizer step, repeated per epoch.
+7. **Evaluation** — measure accuracy on unseen test data.
+8. **Inference** — predict on a brand-new image.
+
+## Code Explanation — PyTorch
+
+A complete, real cat/dog binary classifier, PyTorch:
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, random_split
+
+# Reproducibility
+SEED = 42
+torch.manual_seed(SEED)
+
+# Preprocessing: resize every image to 64x64 and turn it into a tensor
+IMAGE_SIZE = 64
+BATCH_SIZE = 32
+transform = transforms.Compose([
+    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+    transforms.ToTensor()
+])
+
+# ImageFolder reads images from Cat/ and Dog/ subfolders and labels them automatically
+dataset = datasets.ImageFolder(root="path/to/PetImages", transform=transform)
+
+# 90/10 train/test split
+train_size = int(0.90 * len(dataset))
+test_size = len(dataset) - train_size
+train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.cnn = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
+            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 8 * 8, 128), nn.ReLU(),
+            nn.Linear(128, 1)
+        )
+
+    def forward(self, x):
+        x = self.cnn(x)
+        return self.classifier(x)
+
+model = SimpleCNN().to(device)
+loss_function = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training loop
+EPOCHS = 4
+for epoch in range(EPOCHS):
+    model.train()
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.float().unsqueeze(1).to(device)
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = loss_function(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+# Evaluation
+model.eval()
+correct, total = 0, 0
+with torch.no_grad():
+    for images, labels in test_loader:
+        images, labels = images.to(device), labels.float().unsqueeze(1).to(device)
+        predictions = (torch.sigmoid(model(images)) >= 0.5).float()
+        correct += (predictions == labels).sum().item()
+        total += labels.size(0)
+
+print(f"Test Accuracy: {100 * correct / total:.2f}%")
+```
+
+**Here's what each part does:** the `Compose` block standardizes every image to 64×64 and converts it to a tensor; `ImageFolder` + `DataLoader` handle labeling and batching automatically; `SimpleCNN` extracts features through 3 Conv→ReLU→MaxPool blocks (16→32→64 filters, spatial size halving each time: 64→32→16→8) then classifies through two `Linear` layers; the training loop runs a forward pass, computes `BCEWithLogitsLoss`, backpropagates, and updates weights via Adam; evaluation repeats the forward pass with gradients disabled to measure real accuracy on unseen data.
+
+## Practical Tips
+
+- Start with few epochs to confirm the code runs, then increase.
+- Watch the gap between train and test accuracy — a big gap signals overfitting.
+- `0.001` with Adam is a solid starting learning rate.
+- Double-check the `Flatten` → `Linear` input size matches your image size after all the poolings.
+- Check class balance (similar numbers of cats and dogs).
+- Use a GPU when available — training is much faster.
+
+## Running Instructions
+
+```bash
+pip install torch torchvision numpy pillow matplotlib
+```
+
+Organize your data as:
+```
+PetImages/
+├── Cat/
+└── Dog/
+```
+
+Update the `root` path, then run the code in order (imports → data → model → train → evaluate).
+
+**Expected output:**
+```
+Epoch 1/4 | Training Accuracy: ~XX%
+...
+Test Accuracy: ~XX%
+```
+
+## References
+
+- [PyTorch official tutorials](https://pytorch.org/tutorials/)
+- LeNet-5 — Yann LeCun et al. (1998)
+- AlexNet — Krizhevsky, Sutskever, Hinton (2012)
+- VGGNet — Simonyan & Zisserman (2014)
+- Stanford CS231n — Convolutional Neural Networks for Visual Recognition
 
 ---
 
-## 5. Illustrated Explanations
-
-> The figures below are described in text (no actual drawing) so you can sketch them yourself or picture them clearly while reading.
-
-**Figure 1 — The Filter (Kernel) and Convolution**
-*Caption: "A 3×3 filter slides across the input image, multiplies its values with the pixels underneath, then sums the results into a single cell in the output map."*
-Picture a 5×5 input matrix, with a 3×3 window (the filter) moving across it starting from the top-left. At each position, the filter's values are multiplied element-wise with the corresponding image values, then the nine products are summed into one number written into the output feature map.
-
-**Figure 2 — The Feature Map**
-*Caption: "Each different filter produces a different feature map: one filter detects horizontal edges, another detects vertical edges, and so on."*
-When a single filter slides across the whole image, it produces a new grid (map) showing where in the image the pattern it's looking for was found, and how strongly (a higher value = a stronger match).
-
-**Figure 3 — Stride**
-*Caption: "Stride=1 moves the filter one pixel at a time (more detail, larger output); Stride=2 skips two pixels at a time (less detail, roughly half the output size)."*
-Picture the same 5×5 image with a 3×3 filter: with Stride=1 we get a 3×3 output map, while with Stride=2 we get a smaller map (roughly 2×2) because the filter jumps more positions each step.
-
-**Figure 4 — Padding**
-*Caption: "Adding a border of zeros around the original image before convolution, so that edge pixels are processed the same number of times as center pixels."*
-Without padding, edge pixels participate in fewer convolution operations than central pixels, losing some information. Adding a border of zeros (zero-padding) solves this, and also gives precise control over the output feature map size (e.g., keeping it the same size as the input — "Same Padding").
-
-**Figure 5 — Max Pooling**
-*Caption: "A 2×2 window slides over the feature map and keeps only the highest value in each region, shrinking the map by half while preserving the strongest signals."*
-Example: a 2×2 region containing the values (2, 2, 9, 4) → Max Pooling keeps only the value 9 and discards the rest. This reduces size and reduces sensitivity to small shifts in the image.
-
----
-
-## 6. Pipeline Walkthrough (Data → Prediction)
-
-The full practical pipeline for any image classification project with a CNN goes through these stages:
-
-1. **Data Loading:** reading images from labeled folders (e.g., a `Cat` folder and a `Dog` folder), automatically linking each image to its label based on the folder name.
-2. **Preprocessing:** standardizing the dimensions of every image (e.g., 64×64), converting them from an image format into a numeric Tensor the network understands, usually normalizing pixel values between 0 and 1.
-3. **Augmentation (optional):** generating modified copies of the original images (horizontal flip, slight rotation, brightness change) to increase training data diversity and reduce overfitting. Not used in the practical example below to keep it simple, but it's a common and useful addition.
-4. **Train/Test Split:** splitting the data into a training set (to learn the weights) and a test set (to evaluate performance on data never seen during training).
-5. **Model Definition:** building the network architecture (Conv + Pooling + Fully Connected layers), as detailed in the next section.
-6. **Training Loop:** for each batch of images — a forward pass computes the prediction, the loss is calculated, a backward pass computes the gradients, and the optimizer updates the weights. These steps repeat for several "epochs."
-7. **Evaluation:** running the model on the test set (without updating weights) to measure real performance on unseen data.
-8. **Inference:** using the trained model to predict a single new image that wasn't part of the original dataset at all.
-
+*Structured to match the companion [visual guide](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#top), based on a CNN presentation by Ali Raafat.*
 ---
 
 ## 7. Code Explanation — PyTorch
