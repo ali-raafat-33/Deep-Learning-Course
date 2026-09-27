@@ -1,11 +1,5 @@
 # CNN (Convolutional Neural Network) — Student Guide
 
-## Purpose
-
-This README explains Convolutional Neural Networks (CNNs) step by step, in the same order as the companion visual guide. Each section below links to its matching section in the visual guide — click a heading link to see the same concept illustrated with a worked example (grids, numbers, colors) instead of just text.
-
-> **Companion visual guide:** [open the interactive CNN guide](https://b43c7146-95ee-4afd-85b9-24b22de6da0e.frame.claudeusercontent.com/_f/1790548838-ac6b/#top)
-
 ## Prerequisites
 
 - **Python** basics (variables, loops, functions, classes).
